@@ -1,0 +1,29 @@
+{
+  "id": "lens-blur",
+  "name": "Lens Blur",
+  "version": "1.0.0",
+  "description": "A shallow depth of field after the fact. Lens Blur estimates how far away each part of the photo is and blurs what lies outside the distance you pick, the way a lens would: the foreground spills softly over sharp edges, the background stays behind the subject, and bright points bloom into round, bubble, five-blade, ring or cat-eye bokeh. Pick the focus on the photo or on a depth strip, paint nearer or further where the estimate is wrong, and show the depth over the photo to check it.",
+  "author": "Anthony Reimche",
+  "main": "dist/index.js",
+  "license": "GPL-3.0-or-later",
+  "categories": [
+    "look"
+  ],
+  "keywords": [
+    "lens blur",
+    "depth of field",
+    "bokeh",
+    "depth map",
+    "background blur",
+    "portrait"
+  ],
+  "repository": "anthonyreimche/Lens-Blur",
+  "minAppVersion": "3.2.7",
+  "permissions": {
+    "network": [
+      "https://huggingface.co",
+      "https://*.hf.co"
+    ],
+    "reason": "Downloads the depth model (Depth Anything V2 Small, about 27 MB) once, the first time you choose Estimate depth."
+  }
+}
