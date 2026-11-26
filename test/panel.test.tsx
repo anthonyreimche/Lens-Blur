@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { activate, deactivate, PANEL_ID } from "../src/index";
 import { PARAM, SHAPES, STAGE_ID } from "../src/params";
 import { ui } from "../src/store";
@@ -173,5 +173,19 @@ describe("with a depth", () => {
     expect(rig.params()[PARAM.far]).toBeCloseTo(0.05, 6);
     expect(rig.params()[PARAM.near]).toBeCloseTo(0.15, 6);
     expect(rig.commits).toEqual(["Lens Blur: Focal range"]);
+  });
+
+  it("reads the strip's pointer through core's framePoint, under Interface scale", () => {
+    const rig = start(WITH_DEPTH);
+    const framePoint = vi.spyOn(rig.api.develop, "framePoint");
+    show(rig);
+    const strip = screen.getByRole("slider", { name: "Focal range" });
+    Object.defineProperty(strip, "offsetWidth", { value: 200 });
+    strip.getBoundingClientRect = () => ({ left: 0, top: 0, width: 240, height: 48, right: 240, bottom: 48, x: 0, y: 0, toJSON: () => ({}) });
+    strip.setPointerCapture = () => undefined;
+    fireEvent.pointerDown(strip, { button: 0, clientX: 216, pointerId: 1 });
+    fireEvent.pointerUp(strip, { pointerId: 1 });
+    expect(framePoint).toHaveBeenCalledWith(strip, 216, expect.any(Number));
+    expect(rig.params()[PARAM.far]).toBeCloseTo(0.05, 6);
   });
 });

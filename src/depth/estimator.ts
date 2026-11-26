@@ -7,12 +7,10 @@
 // an estimate that doesn't finish, in its time is ended; a worker that won't
 // start with several threads is replaced by one with a single thread.
 
-import { EXT_ID } from "../params";
+import { api } from "../rt";
 import DepthWorker from "./depth-worker?worker&inline";
 import { depthSize, resample, simpleDepth, type DepthMap } from "./map";
 import type { WorkerReply, WorkerRequest } from "./worker-protocol";
-
-declare const __EXT_VERSION__: string;
 
 /** 8-bit RGBA rows from the top, as api.develop.sourcePixels gives them. */
 export interface Pixels {
@@ -41,13 +39,6 @@ export function fitTo(map: DepthMap, pixels: Pick<Pixels, "width" | "height">): 
   return map.width === size.width && map.height === size.height ? map : resample(map, size.width, size.height);
 }
 
-/** Where the installed extension's runtime files are served. import.meta.url
- *  is undefined in an installed extension's module, so the URL is built as
- *  core's loader builds it. */
-export function runtimeUrl(file: string): string {
-  return `${location.origin}/__plugins__/${EXT_ID}/dist/ort/${file}`;
-}
-
 /** Threads for the model: a few, leaving a core for the window, where the
  *  page may share memory between them. */
 export function modelThreads(): number {
@@ -69,8 +60,6 @@ export const ESTIMATOR_TIMES: EstimatorTimes = { initMs: 60_000, runMs: 180_000,
 export interface WorkerEstimatorOptions {
   /** Reads the model's bytes, each time a worker starts. */
   loadModel: () => Promise<ArrayBuffer>;
-  /** Where dist/ort is served, ending in "/". */
-  runtime?: string;
   threads?: number;
   open?: () => Worker;
   times?: EstimatorTimes;
@@ -84,12 +73,10 @@ export class WorkerEstimator implements DepthEstimator {
   private queue: Promise<unknown> = Promise.resolve();
   private idle: ReturnType<typeof setTimeout> | null = null;
   private next = 1;
-  private readonly runtime: string;
   private readonly open: () => Worker;
   private readonly times: EstimatorTimes;
 
   constructor(private readonly options: WorkerEstimatorOptions) {
-    this.runtime = options.runtime ?? runtimeUrl("");
     this.open = options.open ?? (() => new DepthWorker({ name: "Lens Blur depth" }));
     this.times = options.times ?? ESTIMATOR_TIMES;
   }
@@ -99,11 +86,13 @@ export class WorkerEstimator implements DepthEstimator {
   private async startWith(threads: number): Promise<Worker> {
     const model = await this.options.loadModel();
     const worker = this.open();
-    const v = typeof __EXT_VERSION__ === "string" ? __EXT_VERSION__ : "";
+    // The runtime ships in dist/ort (scripts/copy-runtime.mjs); its binary
+    // and threaded glue are found beside its module.
+    const ortUrl = api.assetUrl("dist/ort/ort.wasm.min.mjs");
     const request: WorkerRequest = {
       kind: "init",
-      ortUrl: `${this.runtime}ort.wasm.min.mjs${v ? `?v=${encodeURIComponent(v)}` : ""}`,
-      wasmBase: this.runtime,
+      ortUrl,
+      wasmBase: new URL(".", ortUrl).href,
       threads,
       initTimeoutMs: this.times.initMs,
       model,

@@ -1,7 +1,7 @@
 {
   "name": "safelight-lens-blur",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lens Blur extension for Safelight: a shallow depth of field from an estimated depth map.",
   "type": "module",
   "scripts": {

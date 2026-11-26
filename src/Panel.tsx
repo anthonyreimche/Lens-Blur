@@ -45,6 +45,8 @@ function Tip(props: { title: string; children: ReactNode }) {
   return <div title={props.title}>{props.children}</div>;
 }
 
+const endPreview = () => ui().setState({ brushPreview: false });
+
 function useRevision(controller: LensBlurController | null): number {
   const [revision, setRevision] = React.useState(0);
   React.useEffect(() => controller?.onChange(() => setRevision((r) => r + 1)), [controller]);
@@ -54,6 +56,7 @@ function useRevision(controller: LensBlurController | null): number {
 export function LensBlurPanel() {
   const { Slider } = api.components;
   const { Button, Field, ProgressBar, Row, Section, Select, Stack, Toggle, tokens } = api.ui;
+  const brushDefaults = api.develop.brush.defaults;
   const scope = api.develop.useParamScope();
   const bag = scope.getParams();
   const params = readParams(bag);
@@ -191,12 +194,13 @@ export function LensBlurPanel() {
               <Tip title={TIPS.size}>
                 <Slider
                   label="Size"
-                  value={Math.round(state.brushSize * 1000) / 10}
-                  min={0.5}
-                  max={30}
-                  step={0.1}
-                  defaultValue={5}
-                  onChange={(v) => ui().setState({ brushSize: v / 100 })}
+                  value={Math.round(state.brushSize * 100)}
+                  min={1}
+                  max={50}
+                  step={1}
+                  defaultValue={Math.round(brushDefaults.size * 100)}
+                  onChange={(v) => ui().setState({ brushSize: v / 100, brushPreview: true })}
+                  onCommit={endPreview}
                 />
               </Tip>
               <Tip title={TIPS.feather}>
@@ -206,8 +210,9 @@ export function LensBlurPanel() {
                   min={0}
                   max={100}
                   step={1}
-                  defaultValue={50}
-                  onChange={(v) => ui().setState({ brushFeather: v / 100 })}
+                  defaultValue={Math.round(brushDefaults.feather * 100)}
+                  onChange={(v) => ui().setState({ brushFeather: v / 100, brushPreview: true })}
+                  onCommit={endPreview}
                 />
               </Tip>
               <Tip title={TIPS.strength}>

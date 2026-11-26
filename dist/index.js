@@ -65,7 +65,7 @@ function ee(e) {
 	let t = v(e, .35, .35, .65, .65).sort((e, t) => e - t);
 	return g(t[Math.floor(t.length / 2)] ?? .5, a);
 }
-function y(e, t) {
+function te(e, t) {
 	let n = Array(t).fill(0), r = e.data.length;
 	if (r === 0) return n;
 	for (let i = 0; i < r; i++) {
@@ -76,14 +76,14 @@ function y(e, t) {
 }
 //#endregion
 //#region src/params.ts
-var b = "lens-blur", x = `${b}.blur`, S = "depth", te = "method", ne = "refine", C = (e) => `${x}.${e}`, w = {
+var y = "lens-blur", b = `${y}.blur`, x = "depth", S = "method", ne = "refine", C = (e) => `${b}.${e}`, w = {
 	amount: C("amount"),
 	near: C("near"),
 	far: C("far"),
 	shape: C("shape"),
 	boost: C("boost"),
 	view: C("view"),
-	method: C(te),
+	method: C(S),
 	refine: C(ne)
 }, T = [
 	"circle",
@@ -131,103 +131,121 @@ function re(e) {
 }
 //#endregion
 //#region src/store.ts
-var ie = {
+var ie = () => ({
 	busy: null,
 	error: null,
 	hasModel: null,
 	tool: "none",
-	brushSize: .05,
-	brushFeather: .5,
+	brushSize: M.develop.brush.defaults.size,
+	brushFeather: M.develop.brush.defaults.feather,
 	brushAmount: .5,
+	brushPreview: !1,
 	showDepth: !1,
 	revision: 0
-}, N = null;
-function P() {
-	return N ??= M.stores.create()(() => ({ ...ie })), N;
+}), ae = null;
+function N() {
+	return ae ??= M.stores.create()(ie), ae;
 }
-function ae() {
-	N = null;
+function oe() {
+	ae = null;
 }
 //#endregion
 //#region src/actions.ts
-var F = null, I = null;
-function oe(e, t) {
-	F = e, I = t;
-}
-function se() {
-	F = null, I = null;
-}
-function L() {
-	if (!F) throw Error("Lens Blur isn't running.");
-	return F;
+var P = null, F = null;
+function se(e, t) {
+	P = e, F = t;
 }
 function ce() {
-	return F;
+	P = null, F = null;
 }
-var le = (e) => e instanceof Error ? e.message : String(e);
+function I() {
+	if (!P) throw Error("Lens Blur isn't running.");
+	return P;
+}
+function le() {
+	return P;
+}
+var L = (e) => e instanceof Error ? e.message : String(e);
 async function ue() {
-	let e = await L().hasModel();
-	P().setState({ hasModel: e });
+	let e = await I().hasModel();
+	N().setState({ hasModel: e });
 }
 async function R(e) {
-	let t = P();
+	let t = N();
 	if (!t.getState().busy) {
 		t.setState({ error: null });
 		try {
-			e === "model" && !await L().hasModel() && (t.setState({ busy: "download" }), await L().downloadModel(), t.setState({ hasModel: !0 })), t.setState({ busy: "estimate" }), await L().estimateOpen(e);
+			e === "model" && !await I().hasModel() && (t.setState({ busy: "download" }), await I().downloadModel(), t.setState({ hasModel: !0 })), t.setState({ busy: "estimate" }), await I().estimateOpen(e);
 		} catch (e) {
-			t.setState({ error: le(e) });
+			t.setState({ error: L(e) });
 		} finally {
 			t.setState({ busy: null });
 		}
 	}
 }
-function de(e) {
-	P().setState({ tool: e }), e === "none" || !I ? M.develop.setCanvasTool(null) : M.develop.setCanvasTool({
-		overlay: I,
+var de = {
+	size: "brushSize",
+	feather: "brushFeather",
+	opacity: "brushAmount"
+};
+function fe(e, t) {
+	let n = N().getState();
+	if (n.tool !== "nearer" && n.tool !== "further") return !1;
+	let r = M.develop.brush.step(e, {
+		size: n.brushSize,
+		feather: n.brushFeather,
+		opacity: n.brushAmount
+	}), i = r && r.key !== "flow" ? de[r.key] : null;
+	return !r || !i ? !1 : (t && N().setState({ [i]: r.value }), !0);
+}
+function pe(e) {
+	N().setState({ tool: e }), e === "none" || !F ? M.develop.setCanvasTool(null) : M.develop.setCanvasTool({
+		overlay: F,
 		zoomable: !0,
-		onEscape: () => P().setState({ tool: "none" })
+		onEscape: () => N().setState({ tool: "none" }),
+		onAction: (e) => fe(e, !0),
+		wants: (e) => fe(e, !1)
 	});
 }
-function fe(e) {
-	P().setState({ showDepth: e }), M.develop.setViewValues(e ? { [w.view]: 1 } : null);
+function me(e) {
+	N().setState({ showDepth: e }), M.develop.setViewValues(e ? { [w.view]: 1 } : null);
 }
-function pe(e, t) {
+function he(e, t) {
 	let n = M.stores.useDevelopStore.getState();
 	n.setDynParams({
 		[w.near]: e.near,
 		[w.far]: e.far
 	}), n.commitEdit(t);
 }
-function me(e, t) {
-	let n = L().openMap();
+function ge(e, t) {
+	let n = I().openMap();
 	if (!n) return;
 	let r = .006, i = v(n, e - r, t - r * (n.width / n.height), e + r, t + r * (n.width / n.height)).sort((e, t) => e - t), o = i[Math.floor(i.length / 2)];
 	if (o === void 0) return;
 	let s = k(M.stores.useDevelopStore.getState().paramBag);
-	pe(g(o, Math.max(a, s.near - s.far)), "Lens Blur focus");
+	he(g(o, Math.max(a, s.near - s.far)), "Lens Blur focus");
 }
-function he(e, t, n, r) {
-	let i = L().openMap();
-	i && pe(_(v(i, e, t, n, r)), "Lens Blur focus");
+function _e(e, t, n, r) {
+	let i = I().openMap();
+	i && he(_(v(i, e, t, n, r)), "Lens Blur focus");
 }
-function ge(e) {
-	L().refine(e).catch((e) => P().setState({ error: le(e) }));
+function ve(e) {
+	I().refine(e).catch((e) => N().setState({ error: L(e) }));
 }
-async function _e(e, t) {
+async function ye(e, t) {
 	try {
-		await L().refine(e, t);
+		await I().refine(e, t);
 	} catch (e) {
-		P().setState({ error: le(e) });
+		N().setState({ error: L(e) });
 	}
 }
-function ve() {
+function be() {
 	return M.stores.useDevelopStore.getState().paramBag[w.refine];
 }
 //#endregion
 //#region src/depth/map.ts
-var ye = 1024;
-function be(e, t) {
+var xe = 1024;
+function Se(e, t) {
 	let n = new Float32Array(e * t);
 	for (let r = 0; r < t; r++) n.fill(t > 1 ? r / (t - 1) : .5, r * e, (r + 1) * e);
 	return {
@@ -236,7 +254,7 @@ function be(e, t) {
 		data: n
 	};
 }
-function xe(e, t, n) {
+function Ce(e, t, n) {
 	let r = new Float32Array(t * n), i = e.width / t, a = e.height / n;
 	for (let o = 0; o < n; o++) {
 		let n = Math.min(e.height - 1, Math.max(0, (o + .5) * a - .5)), s = Math.floor(n), c = Math.min(e.height - 1, s + 1), l = n - s;
@@ -251,14 +269,14 @@ function xe(e, t, n) {
 		data: r
 	};
 }
-function Se(e, t) {
-	let n = Math.min(1, ye / Math.max(e, t));
+function we(e, t) {
+	let n = Math.min(1, xe / Math.max(e, t));
 	return {
 		width: Math.max(1, Math.round(e * n)),
 		height: Math.max(1, Math.round(t * n))
 	};
 }
-function Ce(e) {
+function Te(e) {
 	let t = new Float32Array(e.data.length);
 	for (let n = 0; n < t.length; n++) t[n] = .5 + .5 * Math.min(1, Math.max(0, e.data[n]));
 	return {
@@ -271,69 +289,65 @@ function Ce(e) {
 }
 //#endregion
 //#region src/depth/depth-worker.ts?worker&inline
-var we = "(function(){function e(e,t,n){let r=new Float32Array(t*n),i=e.width/t,a=e.height/n;for(let o=0;o<n;o++){let n=Math.min(e.height-1,Math.max(0,(o+.5)*a-.5)),s=Math.floor(n),c=Math.min(e.height-1,s+1),l=n-s;for(let n=0;n<t;n++){let a=Math.min(e.width-1,Math.max(0,(n+.5)*i-.5)),u=Math.floor(a),d=Math.min(e.width-1,u+1),f=a-u,p=e.data[s*e.width+u]*(1-f)+e.data[s*e.width+d]*f,m=e.data[c*e.width+u]*(1-f)+e.data[c*e.width+d]*f;r[o*t+n]=p*(1-l)+m*l}}return{width:t,height:n,data:r}}function t(e){let t=Float32Array.from(e).sort(),n=t[Math.floor(.01*(t.length-1))]??0,r=t[Math.floor(.99*(t.length-1))]??1,i=r-n>1e-6?r-n:1,a=new Float32Array(e.length);for(let t=0;t<e.length;t++)a[t]=Math.min(1,Math.max(0,(e[t]-n)/i));return a}function n(e,t){let n=Math.min(1,1024/Math.max(e,t));return{width:Math.max(1,Math.round(e*n)),height:Math.max(1,Math.round(t*n))}}let r=[.485,.456,.406],i=[.229,.224,.225],a=e=>Math.max(14,Math.round(e/14)*14);function o(e,t){let n=518/Math.min(e,t);return Math.max(e,t)*n>924&&(n=924/Math.max(e,t)),{width:a(e*n),height:a(t*n)}}function s(t,n,a){let s=o(n,a),c=s.width*s.height,l=new Float32Array(3*c);for(let o=0;o<3;o++){let u={width:n,height:a,data:new Float32Array(n*a)};for(let e=0;e<n*a;e++)u.data[e]=t[4*e+o]/255;let d=e(u,s.width,s.height);for(let e=0;e<c;e++)l[o*c+e]=(d.data[e]-r[o])/i[o]}return{data:l,...s}}function c(r,i,a,o,s){let c=n(o,s);return e({width:i,height:a,data:t(r)},c.width,c.height)}let l=null,u=null,d=(e,t=[])=>postMessage(e,{transfer:t}),f=e=>e instanceof Error?e.message:String(e);async function p(e){l=await import(\n/* @vite-ignore */\ne.ortUrl),l.env.wasm.wasmPaths=e.wasmBase,l.env.wasm.proxy=!1,l.env.wasm.numThreads=e.threads,l.env.wasm.initTimeout=e.initTimeoutMs,u=await l.InferenceSession.create(new Uint8Array(e.model),{executionProviders:[`wasm`]})}async function m(e){if(!l||!u)throw Error(`the depth model isn't loaded`);let t=s(e.rgba,e.width,e.height),n=new l.Tensor(`float32`,t.data,[1,3,t.height,t.width]),r=(await u.run({[u.inputNames[0]]:n}))[u.outputNames[0]],[i,a]=r.dims.slice(-2),o=c(Float32Array.from(r.data),a,i,e.width,e.height);d({kind:`depth`,id:e.id,width:o.width,height:o.height,data:o.data},[o.data.buffer])}onmessage=e=>{let t=e.data;t.kind===`init`?p(t).then(()=>d({kind:`ready`}),e=>d({kind:`error`,message:f(e)})):m(t).catch(e=>d({kind:`error`,id:t.id,message:f(e)}))}})();\n//# sourceMappingURL=depth-worker-hJqgqJQ4.js.map", Te = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", we], { type: "text/javascript;charset=utf-8" });
-function Ee(e) {
+var Ee = "(function(){function e(e,t,n){let r=new Float32Array(t*n),i=e.width/t,a=e.height/n;for(let o=0;o<n;o++){let n=Math.min(e.height-1,Math.max(0,(o+.5)*a-.5)),s=Math.floor(n),c=Math.min(e.height-1,s+1),l=n-s;for(let n=0;n<t;n++){let a=Math.min(e.width-1,Math.max(0,(n+.5)*i-.5)),u=Math.floor(a),d=Math.min(e.width-1,u+1),f=a-u,p=e.data[s*e.width+u]*(1-f)+e.data[s*e.width+d]*f,m=e.data[c*e.width+u]*(1-f)+e.data[c*e.width+d]*f;r[o*t+n]=p*(1-l)+m*l}}return{width:t,height:n,data:r}}function t(e){let t=Float32Array.from(e).sort(),n=t[Math.floor(.01*(t.length-1))]??0,r=t[Math.floor(.99*(t.length-1))]??1,i=r-n>1e-6?r-n:1,a=new Float32Array(e.length);for(let t=0;t<e.length;t++)a[t]=Math.min(1,Math.max(0,(e[t]-n)/i));return a}function n(e,t){let n=Math.min(1,1024/Math.max(e,t));return{width:Math.max(1,Math.round(e*n)),height:Math.max(1,Math.round(t*n))}}let r=[.485,.456,.406],i=[.229,.224,.225],a=e=>Math.max(14,Math.round(e/14)*14);function o(e,t){let n=518/Math.min(e,t);return Math.max(e,t)*n>924&&(n=924/Math.max(e,t)),{width:a(e*n),height:a(t*n)}}function s(t,n,a){let s=o(n,a),c=s.width*s.height,l=new Float32Array(3*c);for(let o=0;o<3;o++){let u={width:n,height:a,data:new Float32Array(n*a)};for(let e=0;e<n*a;e++)u.data[e]=t[4*e+o]/255;let d=e(u,s.width,s.height);for(let e=0;e<c;e++)l[o*c+e]=(d.data[e]-r[o])/i[o]}return{data:l,...s}}function c(r,i,a,o,s){let c=n(o,s);return e({width:i,height:a,data:t(r)},c.width,c.height)}let l=null,u=null,d=(e,t=[])=>postMessage(e,{transfer:t}),f=e=>e instanceof Error?e.message:String(e);async function p(e){l=await import(\n/* @vite-ignore */\ne.ortUrl),l.env.wasm.wasmPaths=e.wasmBase,l.env.wasm.proxy=!1,l.env.wasm.numThreads=e.threads,l.env.wasm.initTimeout=e.initTimeoutMs,u=await l.InferenceSession.create(new Uint8Array(e.model),{executionProviders:[`wasm`]})}async function m(e){if(!l||!u)throw Error(`the depth model isn't loaded`);let t=s(e.rgba,e.width,e.height),n=new l.Tensor(`float32`,t.data,[1,3,t.height,t.width]),r=(await u.run({[u.inputNames[0]]:n}))[u.outputNames[0]],[i,a]=r.dims.slice(-2),o=c(Float32Array.from(r.data),a,i,e.width,e.height);d({kind:`depth`,id:e.id,width:o.width,height:o.height,data:o.data},[o.data.buffer])}onmessage=e=>{let t=e.data;t.kind===`init`?p(t).then(()=>d({kind:`ready`}),e=>d({kind:`error`,message:f(e)})):m(t).catch(e=>d({kind:`error`,id:t.id,message:f(e)}))}})();\n//# sourceMappingURL=depth-worker-hJqgqJQ4.js.map", De = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Ee], { type: "text/javascript;charset=utf-8" });
+function Oe(e) {
 	let t;
 	try {
-		if (t = Te && (self.URL || self.webkitURL).createObjectURL(Te), !t) throw "";
+		if (t = De && (self.URL || self.webkitURL).createObjectURL(De), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(we), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Ee), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/depth/estimator.ts
-function De(e) {
-	let t = Se(e.width, e.height);
-	return be(t.width, t.height);
-}
-function Oe(e, t) {
-	let n = Se(t.width, t.height);
-	return e.width === n.width && e.height === n.height ? e : xe(e, n.width, n.height);
-}
 function ke(e) {
-	return `${location.origin}/__plugins__/${b}/dist/ort/${e}`;
+	let t = we(e.width, e.height);
+	return Se(t.width, t.height);
 }
-function Ae() {
+function Ae(e, t) {
+	let n = we(t.width, t.height);
+	return e.width === n.width && e.height === n.height ? e : Ce(e, n.width, n.height);
+}
+function je() {
 	return typeof crossOriginIsolated > "u" || !crossOriginIsolated ? 1 : Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
 }
-var je = {
+var Me = {
 	initMs: 6e4,
 	runMs: 18e4,
 	idleMs: 6e4
-}, z = (e) => Error(e), Me = class {
+}, z = (e) => Error(e), Ne = class {
 	options;
 	worker = null;
 	starting = null;
 	queue = Promise.resolve();
 	idle = null;
 	next = 1;
-	runtime;
 	open;
 	times;
 	constructor(e) {
-		this.options = e, this.runtime = e.runtime ?? ke(""), this.open = e.open ?? (() => new Ee({ name: "Lens Blur depth" })), this.times = e.times ?? je;
+		this.options = e, this.open = e.open ?? (() => new Oe({ name: "Lens Blur depth" })), this.times = e.times ?? Me;
 	}
 	async startWith(e) {
-		let t = await this.options.loadModel(), n = this.open(), r = {
+		let t = await this.options.loadModel(), n = this.open(), r = M.assetUrl("dist/ort/ort.wasm.min.mjs"), i = {
 			kind: "init",
-			ortUrl: `${this.runtime}ort.wasm.min.mjs?v=1.0.0`,
-			wasmBase: this.runtime,
+			ortUrl: r,
+			wasmBase: new URL(".", r).href,
 			threads: e,
 			initTimeoutMs: this.times.initMs,
 			model: t
 		};
 		try {
-			return await new Promise((e, i) => {
-				let a = setTimeout(() => i(z("The depth model took too long to load.")), this.times.initMs + 5e3);
+			return await new Promise((e, r) => {
+				let a = setTimeout(() => r(z("The depth model took too long to load.")), this.times.initMs + 5e3);
 				n.onmessage = ({ data: t }) => {
-					clearTimeout(a), t.kind === "ready" ? e() : i(z(`The depth model wouldn't load: ${t.kind === "error" ? t.message : "no answer"}`));
+					clearTimeout(a), t.kind === "ready" ? e() : r(z(`The depth model wouldn't load: ${t.kind === "error" ? t.message : "no answer"}`));
 				}, n.onerror = (e) => {
-					clearTimeout(a), i(z(`The depth model's worker stopped: ${e.message || "unknown error"}`));
-				}, n.postMessage(r, [t]);
+					clearTimeout(a), r(z(`The depth model's worker stopped: ${e.message || "unknown error"}`));
+				}, n.postMessage(i, [t]);
 			}), n;
 		} catch (e) {
 			throw n.terminate(), e;
@@ -341,7 +355,7 @@ var je = {
 	}
 	ready() {
 		if (this.worker) return Promise.resolve(this.worker);
-		let e = this.options.threads ?? Ae();
+		let e = this.options.threads ?? je();
 		return this.starting ??= this.startWith(e).catch((t) => e > 1 ? this.startWith(1) : Promise.reject(t)).then((e) => this.worker = e).finally(() => this.starting = null), this.starting;
 	}
 	run(e, t) {
@@ -390,39 +404,39 @@ var je = {
 	url: "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/4472b7362082ad9968fee890ca0f1e5aca36b93d/onnx/model_quantized.onnx",
 	sha256: "fcf51f1b230362b28690bb9d1809bf0431f29cad20534e3f589bd7285547f20d",
 	bytes: 27258801
-}, Ne = 9e5;
-async function Pe(e) {
+}, Pe = 9e5;
+async function Fe(e) {
 	let t = new Uint8Array(await crypto.subtle.digest("SHA-256", e));
 	return Array.from(t, (e) => e.toString(16).padStart(2, "0")).join("");
 }
-async function Fe(e, t) {
+async function Ie(e, t) {
 	let n;
 	try {
-		n = await e.fetch(B.url, { timeoutMs: Ne });
+		n = await e.fetch(B.url, { timeoutMs: Pe });
 	} catch (e) {
 		throw Error(`The depth model couldn't be downloaded: ${e instanceof Error ? e.message : String(e)}`);
 	}
 	if (!n.ok) throw Error(`The depth model couldn't be downloaded (the server answered ${n.status}).`);
 	let r = await n.arrayBuffer();
-	if (await Pe(r) !== B.sha256) throw Error("The downloaded depth model isn't the expected file, so it wasn't used.");
+	if (await Fe(r) !== B.sha256) throw Error("The downloaded depth model isn't the expected file, so it wasn't used.");
 	await t.putModel(B.sha256, r);
 }
-async function Ie(e) {
+async function Le(e) {
 	let t = await e.getModel(B.sha256);
 	if (!t) throw Error("Lens Blur's depth model isn't downloaded yet: choose Estimate depth in its panel.");
-	if (await Pe(t) !== B.sha256) throw await e.deleteModel(B.sha256), Error("Lens Blur's kept depth model was damaged and has been removed: choose Estimate depth to download it again.");
+	if (await Fe(t) !== B.sha256) throw await e.deleteModel(B.sha256), Error("Lens Blur's kept depth model was damaged and has been removed: choose Estimate depth to download it again.");
 	return t;
 }
 //#endregion
 //#region src/depth/strokes.ts
-var Le = .25, Re = (e) => typeof e == "number" && Number.isFinite(e);
-function V(e) {
+var Re = .25, V = (e) => typeof e == "number" && Number.isFinite(e);
+function H(e) {
 	if (!Array.isArray(e)) return [];
 	let t = [];
 	for (let n of e) {
 		if (typeof n != "object" || !n) continue;
 		let { dir: e, amount: r, feather: i, dabs: a } = n;
-		(e === 1 || e === -1) && Re(r) && Re(i) && Array.isArray(a) && a.length % 3 == 0 && a.every(Re) && t.push({
+		(e === 1 || e === -1) && V(r) && V(i) && Array.isArray(a) && a.length % 3 == 0 && a.every(V) && t.push({
 			dir: e,
 			amount: Math.min(1, Math.max(0, r)),
 			feather: Math.min(1, Math.max(0, i)),
@@ -438,7 +452,7 @@ function ze(e, t) {
 	let r = (e - n) / (1 - n);
 	return 1 - r * r * (3 - 2 * r);
 }
-function H(e, t) {
+function U(e, t) {
 	if (t.length === 0) return e;
 	let { width: n, height: r } = e, i = Float32Array.from(e.data), a = new Float32Array(n * r);
 	for (let e of t) {
@@ -452,7 +466,7 @@ function H(e, t) {
 				i > a[o] && (a[o] = i);
 			}
 		}
-		let l = e.dir * e.amount * Le;
+		let l = e.dir * e.amount * Re;
 		for (let e = o; e <= c; e++) for (let r = t; r <= s; r++) {
 			let t = e * n + r;
 			a[t] > 0 && (i[t] = Math.min(1, Math.max(0, i[t] + l * a[t])));
@@ -469,17 +483,17 @@ function Be(e) {
 	for (let n = 0; n < e.length; n++) t ^= e.charCodeAt(n), t = Math.imul(t, 16777619);
 	return (t >>> 0).toString(36);
 }
-var U = (e) => Math.round(e * 1e5) / 1e5, Ve = "depth-model", He = 826557004, W = 16, Ue = (e) => parseInt(Be(e), 36) >>> 0;
-function We(e, t) {
+var Ve = (e) => Math.round(e * 1e5) / 1e5, He = "depth-model", Ue = 826557004, W = 16, We = (e) => parseInt(Be(e), 36) >>> 0;
+function Ge(e, t) {
 	let n = new Uint8Array(W + 2 * e.data.length), r = new DataView(n.buffer);
-	r.setUint32(0, He, !0), r.setUint16(4, e.width, !0), r.setUint16(6, e.height, !0), r.setUint32(8, Ue(t), !0);
+	r.setUint32(0, Ue, !0), r.setUint16(4, e.width, !0), r.setUint16(6, e.height, !0), r.setUint32(8, We(t), !0);
 	for (let t = 0; t < e.data.length; t++) r.setUint16(W + 2 * t, Math.round(Math.min(1, Math.max(0, e.data[t])) * 65535), !0);
 	return n;
 }
-function Ge(e, t) {
+function Ke(e, t) {
 	if (!e || e.byteLength < W) return null;
 	let n = new DataView(e.buffer, e.byteOffset, e.byteLength);
-	if (n.getUint32(0, !0) !== He || n.getUint32(8, !0) !== Ue(t)) return null;
+	if (n.getUint32(0, !0) !== Ue || n.getUint32(8, !0) !== We(t)) return null;
 	let r = n.getUint16(4, !0), i = n.getUint16(6, !0);
 	if (r === 0 || i === 0 || e.byteLength !== W + 2 * r * i) return null;
 	let a = new Float32Array(r * i);
@@ -492,14 +506,14 @@ function Ge(e, t) {
 }
 //#endregion
 //#region src/controller.ts
-function Ke(e) {
+function qe(e) {
 	return `${e.copyOf ?? e.id}|${e.relPath}|${e.fileSize}|${e.rotation ?? 0}`;
 }
-var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop to estimate it.", Ye = class extends Error {
+var Je = 6, Ye = "Lens Blur has no depth for this photo yet: open it in Develop to estimate it.", Xe = class extends Error {
 	constructor() {
 		super("The photo is still loading.");
 	}
-}, Xe = class {
+}, Ze = class {
 	host;
 	store;
 	makeEstimator;
@@ -513,7 +527,7 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 	version = 0;
 	syncing = null;
 	syncAgain = !1;
-	constructor(e, t, n = (e) => new Me({ loadModel: e })) {
+	constructor(e, t, n = (e) => new Ne({ loadModel: e })) {
 		this.host = e, this.store = t, this.makeEstimator = n;
 	}
 	onChange(e) {
@@ -529,13 +543,13 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 		return this.store.hasModel(B.sha256).catch(() => !1);
 	}
 	downloadModel() {
-		return Fe(this.host.network, this.store);
+		return Ie(this.host.network, this.store);
 	}
 	remember(e, t) {
-		for (this.bases.delete(e), this.bases.set(e, t); this.bases.size > qe;) this.bases.delete(this.bases.keys().next().value);
+		for (this.bases.delete(e), this.bases.set(e, t); this.bases.size > Je;) this.bases.delete(this.bases.keys().next().value);
 	}
 	base(e, t, n) {
-		let r = `${t}|${Ke(e)}`, i = this.bases.get(r);
+		let r = `${t}|${qe(e)}`, i = this.bases.get(r);
 		if (i) return this.remember(r, i), Promise.resolve(i);
 		let a = this.making.get(r);
 		if (a) return a;
@@ -547,30 +561,30 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 	async make(e, t, n) {
 		let r = e.id === this.host.openPhotoId();
 		if (t === "simple") {
-			if (r && !n) throw new Ye();
+			if (r && !n) throw new Xe();
 			let t = n ?? await this.host.renderPixels(e.id);
 			if (!t) throw Error("Lens Blur couldn't read the photo to make its depth.");
-			return De(t);
+			return ke(t);
 		}
-		let i = Ke(e);
+		let i = qe(e);
 		for (let t of e.copyOf ? [e.id, e.copyOf] : [e.id]) {
-			let n = Ge(await this.host.photoData(Ve, t).catch(() => null), i);
+			let n = Ke(await this.host.photoData(He, t).catch(() => null), i);
 			if (n) return t === e.id && this.kept.add(`${e.id}|${i}`), n;
 		}
-		if (!n) throw r ? new Ye() : /* @__PURE__ */ Error(Je);
+		if (!n) throw r ? new Xe() : /* @__PURE__ */ Error(Ye);
 		if (!await this.hasModel()) throw Error("Lens Blur's depth model isn't downloaded yet: choose Estimate depth in its panel.");
-		return this.estimator ??= this.makeEstimator(() => Ie(this.store)), Oe(await this.estimator.estimate(n), n);
+		return this.estimator ??= this.makeEstimator(() => Le(this.store)), Ae(await this.estimator.estimate(n), n);
 	}
 	provide = async (e, t) => {
 		let n = this.host.photo(e);
 		if (!n) return null;
 		let r = e === this.host.openPhotoId(), i = r ? this.host.openBag() : await this.host.savedBag(e), a = A(i);
 		if (!a) {
-			if (k(i ?? {}).amount >= .5) throw Error(Je);
+			if (k(i ?? {}).amount >= .5) throw Error(Ye);
 			return null;
 		}
 		let o = await this.base(n, a, r ? this.host.sourcePixels() : null);
-		return t.aborted ? null : Ce(H(o, V(i?.[w.refine])));
+		return t.aborted ? null : Te(U(o, H(i?.[w.refine])));
 	};
 	syncOpen() {
 		return this.syncAgain = !0, this.syncing ||= (async () => {
@@ -579,7 +593,7 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 				try {
 					await this.syncOnce();
 				} catch (e) {
-					if (e instanceof Ye) continue;
+					if (e instanceof Xe) continue;
 					let t = e instanceof Error ? e.message : String(e);
 					for (let e of this.errorListeners) e(t);
 				}
@@ -595,19 +609,19 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 			this.shown && (this.host.setTexture(this.shown.photoId, null), this.shown = null, this.changed());
 			return;
 		}
-		let i = V(n[w.refine]), a = Ke(t), o = `${r}|${a}|${JSON.stringify(i)}`;
+		let i = H(n[w.refine]), a = qe(t), o = `${r}|${a}|${JSON.stringify(i)}`;
 		if (this.shown?.sig === o) return;
 		let s = await this.base(t, r, this.host.sourcePixels());
 		if (this.host.openPhotoId() !== t.id) return;
-		let c = H(s, i);
+		let c = U(s, i);
 		this.host.setTexture(t.id, {
-			...Ce(c),
+			...Te(c),
 			version: ++this.version
 		}), this.shown = {
 			photoId: t.id,
 			sig: o,
 			map: c
-		}, r === "model" && !this.kept.has(`${t.id}|${a}`) && (this.host.putOpenPhotoData(Ve, We(s, a)), this.kept.add(`${t.id}|${a}`)), this.changed();
+		}, r === "model" && !this.kept.has(`${t.id}|${a}`) && (this.host.putOpenPhotoData(He, Ge(s, a)), this.kept.add(`${t.id}|${a}`)), this.changed();
 	}
 	openPhoto() {
 		let e = this.host.openPhotoId(), t = e ? this.host.photo(e) : void 0;
@@ -624,7 +638,7 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 		if (this.host.openPhotoId() !== t.id) return;
 		let i = this.host.openBag(), a = { [w.method]: e };
 		if (k(i).amount === 0) {
-			let e = ee(H(r, V(i[w.refine])));
+			let e = ee(U(r, H(i[w.refine])));
 			Object.assign(a, {
 				[w.amount]: 50,
 				[w.near]: e.near,
@@ -641,24 +655,24 @@ var qe = 6, Je = "Lens Blur has no depth for this photo yet: open it in Develop 
 	}
 	histogram(e) {
 		let t = this.openMap();
-		return t ? y(t, e) : null;
+		return t ? te(t, e) : null;
 	}
 	dispose() {
 		this.shown && this.host.setTexture(this.shown.photoId, null), this.estimator?.dispose(), this.estimator = null, this.listeners.clear(), this.errorListeners.clear(), this.bases.clear(), this.shown = null;
 	}
-}, Ze = "lens-blur", Qe = "models";
+}, Qe = "lens-blur", $e = "models";
 function G(e) {
 	return new Promise((t, n) => {
 		e.onsuccess = () => t(e.result), e.onerror = () => n(e.error ?? /* @__PURE__ */ Error("IndexedDB request failed"));
 	});
 }
-function $e() {
+function et() {
 	let e = null, t = () => e ??= new Promise((t, n) => {
-		let r = indexedDB.open(Ze, 1);
-		r.onupgradeneeded = () => r.result.createObjectStore(Qe), r.onsuccess = () => t(r.result), r.onerror = () => {
+		let r = indexedDB.open(Qe, 1);
+		r.onupgradeneeded = () => r.result.createObjectStore($e), r.onsuccess = () => t(r.result), r.onerror = () => {
 			e = null, n(r.error ?? /* @__PURE__ */ Error("IndexedDB wouldn't open"));
 		};
-	}), n = async (e) => (await t()).transaction(Qe, e).objectStore(Qe);
+	}), n = async (e) => (await t()).transaction($e, e).objectStore($e);
 	return {
 		hasModel: async (e) => await G((await n("readonly")).count(e)) > 0,
 		getModel: async (e) => {
@@ -671,152 +685,118 @@ function $e() {
 }
 //#endregion
 //#region src/Overlay.tsx
-var et = {
-	position: "absolute",
-	transform: "translate(-50%, -50%)",
-	borderRadius: "50%",
-	boxShadow: "0 0 0 1px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.7)",
-	pointerEvents: "none"
-};
-function tt(e, t, n) {
-	let r = e.getBoundingClientRect(), i = e.offsetWidth > 0 && r.width > 0 ? r.width / e.offsetWidth : 1;
-	return {
-		x: (t - r.left) / i,
-		y: (n - r.top) / i
-	};
-}
-var nt = (e) => e instanceof HTMLElement && (e.tagName === "INPUT" || e.tagName === "TEXTAREA" || e.isContentEditable);
-function rt(e) {
-	let { toImage: t, radiusToScreen: n, radiusToImage: r } = M.develop.useDevelopOverlay(), i = P()(), a = j.useRef(null), [o, s] = j.useState(null), [c, l] = j.useState(null), [u, d] = j.useState(!1), f = i.tool === "nearer" || i.tool === "further";
-	j.useEffect(() => M.develop.setCanvasCursor(f ? "none" : "crosshair", { priority: 20 }), [f]), j.useEffect(() => {
-		let e = (e) => {
-			!nt(e.target) && (e.code === "Space" || e.ctrlKey || e.metaKey) && d(!0);
-		}, t = (e) => {
-			(e.code === "Space" || !(e.ctrlKey || e.metaKey)) && d(!1);
-		}, n = () => d(!1);
-		return window.addEventListener("keydown", e, !0), window.addEventListener("keyup", t, !0), window.addEventListener("blur", n), () => {
-			window.removeEventListener("keydown", e, !0), window.removeEventListener("keyup", t, !0), window.removeEventListener("blur", n);
-		};
-	}, []);
-	let p = n ? n(i.brushSize) : 0, m = (e) => {
+function tt(e) {
+	let { toImage: t, radiusToScreen: n } = M.develop.useDevelopOverlay(), r = N()(), i = j.useRef(null), [a, o] = j.useState(null), [s, c] = j.useState(null), l = r.tool === "nearer" || r.tool === "further";
+	j.useEffect(() => M.develop.setCanvasCursor("crosshair", { priority: 20 }), []);
+	let u = n ? n(r.brushSize) : 0, d = (e) => {
 		if (!t) return null;
 		let n = t(e.x, e.y);
 		return [
-			U(n.x),
-			U(n.y),
-			U(i.brushSize)
+			Ve(n.x),
+			Ve(n.y),
+			Ve(r.brushSize)
 		];
-	}, h = (e) => {
-		if (e.button !== 0 || !a.current) return;
-		let t = tt(a.current, e.clientX, e.clientY);
-		if (a.current.setPointerCapture(e.pointerId), !f) {
-			s({
+	}, f = (e) => {
+		if (e.button !== 0 || !i.current) return;
+		let t = M.develop.framePoint(i.current, e.clientX, e.clientY);
+		if (i.current.setPointerCapture(e.pointerId), !l) {
+			o({
 				kind: "focus",
 				from: t,
 				to: t
 			});
 			return;
 		}
-		let n = m(t);
+		let n = d(t);
 		if (!n) return;
-		let r = {
-			dir: i.tool === "nearer" ? 1 : -1,
-			amount: i.brushAmount,
-			feather: i.brushFeather,
+		let a = {
+			dir: r.tool === "nearer" ? 1 : -1,
+			amount: r.brushAmount,
+			feather: r.brushFeather,
 			dabs: n
-		}, o = V(ve());
-		s({
+		}, s = H(be());
+		o({
 			kind: "paint",
-			stroke: r,
-			before: o,
+			stroke: a,
+			before: s,
 			last: t
-		}), ge([...o, r]);
-	}, g = (e) => {
-		if (!a.current) return;
-		let t = tt(a.current, e.clientX, e.clientY);
-		if (l(t), !o) return;
-		if (o.kind === "focus") {
-			s({
-				...o,
+		}), ve([...s, a]);
+	}, p = (e) => {
+		if (!i.current) return;
+		let t = M.develop.framePoint(i.current, e.clientX, e.clientY);
+		if (c(t), !a) return;
+		if (a.kind === "focus") {
+			o({
+				...a,
 				to: t
 			});
 			return;
 		}
-		if (Math.hypot(t.x - o.last.x, t.y - o.last.y) < Math.max(2, p * .25)) return;
-		let n = m(t);
+		if (Math.hypot(t.x - a.last.x, t.y - a.last.y) < Math.max(2, u * .25)) return;
+		let n = d(t);
 		if (!n) return;
 		let r = {
-			...o.stroke,
-			dabs: [...o.stroke.dabs, ...n]
+			...a.stroke,
+			dabs: [...a.stroke.dabs, ...n]
 		};
-		s({
-			...o,
+		o({
+			...a,
 			stroke: r,
 			last: t
-		}), ge([...o.before, r]);
-	}, _ = () => {
-		let e = o;
-		if (s(null), !e || !t) return;
+		}), ve([...a.before, r]);
+	}, m = () => {
+		let e = a;
+		if (o(null), !e || !t) return;
 		if (e.kind === "paint") {
-			_e([...e.before, e.stroke], e.stroke.dir > 0 ? "Lens Blur: Nearer" : "Lens Blur: Further");
+			ye([...e.before, e.stroke], e.stroke.dir > 0 ? "Lens Blur: Nearer" : "Lens Blur: Further");
 			return;
 		}
 		let n = t(e.from.x, e.from.y);
 		if (Math.hypot(e.to.x - e.from.x, e.to.y - e.from.y) < 4) {
-			me(n.x, n.y);
+			ge(n.x, n.y);
 			return;
 		}
 		let r = t(e.to.x, e.to.y);
-		he(n.x, n.y, r.x, r.y);
-	}, v = o?.kind === "focus" ? {
-		left: Math.min(o.from.x, o.to.x),
-		top: Math.min(o.from.y, o.to.y),
-		width: Math.abs(o.to.x - o.from.x),
-		height: Math.abs(o.to.y - o.from.y)
+		_e(n.x, n.y, r.x, r.y);
+	}, h = a?.kind === "focus" ? {
+		left: Math.min(a.from.x, a.to.x),
+		top: Math.min(a.from.y, a.to.y),
+		width: Math.abs(a.to.x - a.from.x),
+		height: Math.abs(a.to.y - a.from.y)
 	} : null;
 	return /* @__PURE__ */ j.createElement("div", {
-		ref: a,
-		onPointerDown: h,
-		onPointerMove: g,
-		onPointerUp: _,
-		onPointerCancel: _,
-		onPointerLeave: () => l(null),
+		ref: i,
+		onPointerDown: f,
+		onPointerMove: p,
+		onPointerUp: m,
+		onPointerCancel: m,
+		onPointerLeave: () => c(null),
 		style: {
 			position: "absolute",
 			inset: 0,
-			pointerEvents: u ? "none" : "auto",
 			touchAction: "none"
 		}
-	}, v && v.width + v.height > 4 && /* @__PURE__ */ j.createElement("div", { style: {
+	}, h && h.width + h.height > 4 && /* @__PURE__ */ j.createElement("div", { style: {
 		position: "absolute",
-		...v,
+		...h,
 		border: "1px dashed rgba(255,255,255,0.85)",
 		boxShadow: "0 0 0 1px rgba(0,0,0,0.4)",
 		pointerEvents: "none"
-	} }), f && c && r && /* @__PURE__ */ j.createElement(j.Fragment, null, /* @__PURE__ */ j.createElement("div", { style: {
-		...et,
-		left: c.x,
-		top: c.y,
-		width: 2 * p,
-		height: 2 * p
-	} }), /* @__PURE__ */ j.createElement("div", { style: {
-		...et,
-		left: c.x,
-		top: c.y,
-		width: 2 * p * (1 - i.brushFeather),
-		height: 2 * p * (1 - i.brushFeather),
-		opacity: .6
-	} })));
+	} }), l && /* @__PURE__ */ j.createElement(M.develop.BrushCursor, {
+		at: r.brushPreview ? "centre" : s,
+		size: r.brushSize,
+		feather: r.brushFeather
+	}));
 }
 //#endregion
 //#region src/DepthStrip.tsx
-var it = 64, at = 40, ot = .03;
-function st(e, t) {
-	let n = e.getBoundingClientRect(), r = e.offsetWidth > 0 && n.width > 0 ? n.width / e.offsetWidth : 1;
-	return Math.min(1, Math.max(0, (t - n.left) / r / Math.max(1, e.offsetWidth)));
+var nt = 64, rt = 40, it = .03;
+function at(e, t) {
+	let { x: n } = M.develop.framePoint(e, t, 0);
+	return Math.min(1, Math.max(0, n / Math.max(1, e.offsetWidth)));
 }
 var K = (e) => Math.round(e * 1e4) / 1e4;
-function ct(e, t) {
+function ot(e, t) {
 	let n = 1 - t, { near: r, far: i } = e.start;
 	if (e.kind === "near") return {
 		near: K(Math.min(1, Math.max(n, i + .005))),
@@ -832,12 +812,12 @@ function ct(e, t) {
 		far: K(s - o / 2)
 	};
 }
-function lt(e) {
+function st(e) {
 	let { tokens: t } = M.ui, n = j.useRef(null), r = j.useRef(null), { histogram: i, band: o, onChange: s, onCommit: c } = e, l = 1 - o.near, u = 1 - o.far, d = Math.max(1e-6, ...i ?? [0]), f = (e) => {
 		if (!n.current || e.button !== 0) return;
-		let t = st(n.current, e.clientX), i = "move";
-		if (Math.abs(t - l) < ot) i = "near";
-		else if (Math.abs(t - u) < ot) i = "far";
+		let t = at(n.current, e.clientX), i = "move";
+		if (Math.abs(t - l) < it) i = "near";
+		else if (Math.abs(t - u) < it) i = "far";
 		else if (t < l || t > u) {
 			let i = g(1 - t, Math.max(a, o.near - o.far));
 			s(i), r.current = {
@@ -853,7 +833,7 @@ function lt(e) {
 			start: o
 		}, n.current.setPointerCapture(e.pointerId);
 	}, p = (e) => {
-		r.current && n.current && s(ct(r.current, st(n.current, e.clientX)));
+		r.current && n.current && s(ot(r.current, at(n.current, e.clientX)));
 	}, m = () => {
 		r.current && (r.current = null, c());
 	};
@@ -868,7 +848,7 @@ function lt(e) {
 		title: "The photo's depths, nearest on the left. The lit range stays sharp: drag its edges to widen or narrow it, drag it to move it, or click elsewhere to focus there. The arrow keys move it too.",
 		onKeyDown: (e) => {
 			let t = e.key === "ArrowLeft" ? -.01 : e.key === "ArrowRight" ? .01 : 0;
-			t !== 0 && (e.preventDefault(), s(ct({
+			t !== 0 && (e.preventDefault(), s(ot({
 				kind: "move",
 				from: 0,
 				start: o
@@ -880,7 +860,7 @@ function lt(e) {
 		onPointerCancel: m,
 		style: {
 			position: "relative",
-			height: at,
+			height: rt,
 			background: t.surface1,
 			border: `1px solid ${t.borderSubtle}`,
 			borderRadius: 4,
@@ -893,8 +873,8 @@ function lt(e) {
 		style: {
 			position: "absolute",
 			bottom: 0,
-			left: `${100 * n / it}%`,
-			width: `${100 / it}%`,
+			left: `${100 * n / nt}%`,
+			width: `${100 / nt}%`,
 			height: `${100 * e / d}%`,
 			background: t.textMuted,
 			opacity: .55
@@ -914,7 +894,7 @@ function lt(e) {
 }
 //#endregion
 //#region src/Panel.tsx
-var q = "Lens Blur", ut = {
+var q = "Lens Blur", ct = {
 	circle: {
 		label: "Circle",
 		title: "Round, evenly lit discs, as from a wide-open lens"
@@ -935,9 +915,9 @@ var q = "Lens Blur", ut = {
 		label: "Cat eye",
 		title: "Discs that narrow toward the frame's edges, as a fast lens's do"
 	}
-}, dt = T.map((e, t) => ({
+}, lt = T.map((e, t) => ({
 	value: String(t),
-	label: ut[e].label
+	label: ct[e].label
 })), J = {
 	estimate: "Estimate how far away each part of the photo is. The first time, this downloads the depth model (Depth Anything V2 Small, about 27 MB) and keeps it.",
 	simple: "Use a depth that runs from far at the top of the photo to near at the bottom, without the model. Refine it by painting.",
@@ -957,141 +937,150 @@ var q = "Lens Blur", ut = {
 function Y(e) {
 	return /* @__PURE__ */ j.createElement("div", { title: e.title }, e.children);
 }
-function ft(e) {
+var ut = () => N().setState({ brushPreview: !1 });
+function dt(e) {
 	let [t, n] = j.useState(0);
 	return j.useEffect(() => e?.onChange(() => n((e) => e + 1)), [e]), t;
 }
-function pt() {
-	let { Slider: e } = M.components, { Button: t, Field: n, ProgressBar: r, Row: i, Section: a, Select: o, Stack: s, Toggle: c, tokens: l } = M.ui, u = M.develop.useParamScope(), d = u.getParams(), f = k(d), p = A(d), m = P()(), h = M.develop.useCanvasToolHeld() ? m.tool : "none", g = ce(), _ = ft(g), v = j.useMemo(() => p ? g?.histogram(64) ?? null : null, [
-		g,
-		p,
-		d[w.refine],
-		_
+function ft() {
+	let { Slider: e } = M.components, { Button: t, Field: n, ProgressBar: r, Row: i, Section: a, Select: o, Stack: s, Toggle: c, tokens: l } = M.ui, u = M.develop.brush.defaults, d = M.develop.useParamScope(), f = d.getParams(), p = k(f), m = A(f), h = N()(), g = M.develop.useCanvasToolHeld() ? h.tool : "none", _ = le(), v = dt(_), ee = j.useMemo(() => m ? _?.histogram(64) ?? null : null, [
+		_,
+		m,
+		f[w.refine],
+		v
 	]);
-	if (!g) return null;
-	let ee = V(d[w.refine]), y = (e, t) => u.setParams({ [w[e]]: t }), b = (e) => de(h === e ? "none" : e), x = m.busy === "download" ? "Downloading the depth model" : m.busy === "estimate" ? "Estimating depth" : null, S = /* @__PURE__ */ j.createElement(j.Fragment, null, x && /* @__PURE__ */ j.createElement(s, { gap: 4 }, /* @__PURE__ */ j.createElement("span", { style: {
+	if (!_) return null;
+	let te = H(f[w.refine]), y = (e, t) => d.setParams({ [w[e]]: t }), b = (e) => pe(g === e ? "none" : e), x = h.busy === "download" ? "Downloading the depth model" : h.busy === "estimate" ? "Estimating depth" : null, S = /* @__PURE__ */ j.createElement(j.Fragment, null, x && /* @__PURE__ */ j.createElement(s, { gap: 4 }, /* @__PURE__ */ j.createElement("span", { style: {
 		color: l.textSecondary,
 		fontSize: 11
-	} }, x), /* @__PURE__ */ j.createElement(r, { indeterminate: !0 })), m.error && /* @__PURE__ */ j.createElement(i, {
+	} }, x), /* @__PURE__ */ j.createElement(r, { indeterminate: !0 })), h.error && /* @__PURE__ */ j.createElement(i, {
 		gap: 6,
 		align: "flex-start"
 	}, /* @__PURE__ */ j.createElement("span", { style: {
 		color: l.textSecondary,
 		fontSize: 11,
 		flex: 1
-	} }, m.error), /* @__PURE__ */ j.createElement(t, {
+	} }, h.error), /* @__PURE__ */ j.createElement(t, {
 		variant: "ghost",
 		size: "sm",
 		"aria-label": "Dismiss",
-		onClick: () => P().setState({ error: null })
+		onClick: () => N().setState({ error: null })
 	}, "✕")));
-	return p ? /* @__PURE__ */ j.createElement(s, {
+	return m ? /* @__PURE__ */ j.createElement(s, {
 		gap: 8,
 		style: { padding: 8 }
 	}, /* @__PURE__ */ j.createElement(Y, { title: J.amount }, /* @__PURE__ */ j.createElement(e, {
 		label: "Blur amount",
-		value: f.amount,
+		value: p.amount,
 		min: D.amount.min,
 		max: D.amount.max,
 		step: D.amount.step,
 		defaultValue: E.amount,
 		onChange: (e) => y("amount", e),
-		onCommit: () => u.commit(`${q}: Blur amount`)
+		onCommit: () => d.commit(`${q}: Blur amount`)
 	})), /* @__PURE__ */ j.createElement(n, { label: "Bokeh" }, /* @__PURE__ */ j.createElement(o, {
 		ariaLabel: "Bokeh",
-		title: `${J.shape} ${ut[T[f.shape]].title}.`,
-		value: String(f.shape),
-		options: dt,
+		title: `${J.shape} ${ct[T[p.shape]].title}.`,
+		value: String(p.shape),
+		options: lt,
 		onChange: (e) => {
-			y("shape", Number(e)), u.commit(`${q}: Bokeh`);
+			y("shape", Number(e)), d.commit(`${q}: Bokeh`);
 		}
 	})), /* @__PURE__ */ j.createElement(Y, { title: J.boost }, /* @__PURE__ */ j.createElement(e, {
 		label: "Boost",
-		value: f.boost,
+		value: p.boost,
 		min: D.boost.min,
 		max: D.boost.max,
 		step: D.boost.step,
 		defaultValue: E.boost,
 		onChange: (e) => y("boost", e),
-		onCommit: () => u.commit(`${q}: Boost`)
+		onCommit: () => d.commit(`${q}: Boost`)
 	})), /* @__PURE__ */ j.createElement(a, {
 		title: "Focal range",
 		right: /* @__PURE__ */ j.createElement(t, {
 			variant: "ghost",
 			size: "sm",
-			active: h === "focus",
+			active: g === "focus",
 			title: J.focus,
 			onClick: () => b("focus")
 		}, "Pick")
-	}, /* @__PURE__ */ j.createElement(lt, {
-		histogram: v,
+	}, /* @__PURE__ */ j.createElement(st, {
+		histogram: ee,
 		band: {
-			near: f.near,
-			far: f.far
+			near: p.near,
+			far: p.far
 		},
-		onChange: (e) => u.setParams({
+		onChange: (e) => d.setParams({
 			[w.near]: e.near,
 			[w.far]: e.far
 		}),
-		onCommit: () => u.commit(`${q}: Focal range`)
+		onCommit: () => d.commit(`${q}: Focal range`)
 	})), /* @__PURE__ */ j.createElement(a, {
 		title: "Refine depth",
-		right: ee.length > 0 ? /* @__PURE__ */ j.createElement(t, {
+		right: te.length > 0 ? /* @__PURE__ */ j.createElement(t, {
 			variant: "ghost",
 			size: "sm",
 			title: J.clear,
-			onClick: () => void g.refine([], `${q}: Clear refinements`)
+			onClick: () => void _.refine([], `${q}: Clear refinements`)
 		}, "Clear") : null
 	}, /* @__PURE__ */ j.createElement(s, { gap: 6 }, /* @__PURE__ */ j.createElement(i, { gap: 6 }, /* @__PURE__ */ j.createElement(t, {
 		variant: "secondary",
 		size: "sm",
-		active: h === "nearer",
+		active: g === "nearer",
 		title: J.nearer,
 		onClick: () => b("nearer")
 	}, "Nearer"), /* @__PURE__ */ j.createElement(t, {
 		variant: "secondary",
 		size: "sm",
-		active: h === "further",
+		active: g === "further",
 		title: J.further,
 		onClick: () => b("further")
-	}, "Further")), (h === "nearer" || h === "further") && /* @__PURE__ */ j.createElement(j.Fragment, null, /* @__PURE__ */ j.createElement(Y, { title: J.size }, /* @__PURE__ */ j.createElement(e, {
+	}, "Further")), (g === "nearer" || g === "further") && /* @__PURE__ */ j.createElement(j.Fragment, null, /* @__PURE__ */ j.createElement(Y, { title: J.size }, /* @__PURE__ */ j.createElement(e, {
 		label: "Size",
-		value: Math.round(m.brushSize * 1e3) / 10,
-		min: .5,
-		max: 30,
-		step: .1,
-		defaultValue: 5,
-		onChange: (e) => P().setState({ brushSize: e / 100 })
+		value: Math.round(h.brushSize * 100),
+		min: 1,
+		max: 50,
+		step: 1,
+		defaultValue: Math.round(u.size * 100),
+		onChange: (e) => N().setState({
+			brushSize: e / 100,
+			brushPreview: !0
+		}),
+		onCommit: ut
 	})), /* @__PURE__ */ j.createElement(Y, { title: J.feather }, /* @__PURE__ */ j.createElement(e, {
 		label: "Feather",
-		value: Math.round(m.brushFeather * 100),
+		value: Math.round(h.brushFeather * 100),
 		min: 0,
 		max: 100,
 		step: 1,
-		defaultValue: 50,
-		onChange: (e) => P().setState({ brushFeather: e / 100 })
+		defaultValue: Math.round(u.feather * 100),
+		onChange: (e) => N().setState({
+			brushFeather: e / 100,
+			brushPreview: !0
+		}),
+		onCommit: ut
 	})), /* @__PURE__ */ j.createElement(Y, { title: J.strength }, /* @__PURE__ */ j.createElement(e, {
 		label: "Strength",
-		value: Math.round(m.brushAmount * 100),
+		value: Math.round(h.brushAmount * 100),
 		min: 1,
 		max: 100,
 		step: 1,
 		defaultValue: 50,
-		onChange: (e) => P().setState({ brushAmount: e / 100 })
+		onChange: (e) => N().setState({ brushAmount: e / 100 })
 	}))))), /* @__PURE__ */ j.createElement(i, {
 		gap: 8,
 		justify: "space-between"
 	}, /* @__PURE__ */ j.createElement("div", { title: J.showDepth }, /* @__PURE__ */ j.createElement(c, {
 		label: "Show depth",
-		checked: m.showDepth,
-		onChange: fe
+		checked: h.showDepth,
+		onChange: me
 	})), /* @__PURE__ */ j.createElement("div", {
 		title: J.method,
 		style: { minWidth: 110 }
 	}, /* @__PURE__ */ j.createElement(o, {
 		ariaLabel: "Depth",
-		value: p,
-		disabled: !!m.busy,
+		value: m,
+		disabled: !!h.busy,
 		options: [{
 			value: "model",
 			label: "Estimated"
@@ -1107,13 +1096,13 @@ function pt() {
 		variant: "primary",
 		size: "sm",
 		title: J.estimate,
-		disabled: !!m.busy,
+		disabled: !!h.busy,
 		onClick: () => void R("model")
 	}, "Estimate depth"), /* @__PURE__ */ j.createElement(t, {
 		variant: "secondary",
 		size: "sm",
 		title: J.simple,
-		disabled: !!m.busy,
+		disabled: !!h.busy,
 		onClick: () => void R("simple")
 	}, "Simple depth")), S);
 }
@@ -1122,7 +1111,7 @@ function pt() {
 var X = (e) => {
 	let t = e.toPrecision(9);
 	return /[.e]/.test(t) ? t : `${t}.0`;
-}, mt = 4096, Z = "precision highp int;\nivec2 lbFrame() { return ivec2(floor(1.0 / uTexel + 0.5)); }\nint lbHalf() { return lbFrame().y / 2; }\nivec2 lbSize(int l) {\n  ivec2 fr = ivec2(lbFrame().x, 2 * lbHalf());\n  int s = 1 << l;\n  return max((fr + s - 1) / s, ivec2(1));\n}\nivec2 lbOrigin(int l) {\n  if (l <= 1) return ivec2(0);\n  ivec2 o = ivec2(lbSize(1).x, 0);\n  for (int k = 2; k <= 8; k++) {\n    if (k >= l) break;\n    o.y += lbSize(k).y;\n  }\n  return o;\n}\nbool lbFits(int l) {\n  ivec2 e = lbOrigin(l) + lbSize(l);\n  return e.x <= lbFrame().x && e.y <= lbHalf();\n}\nbool lbPresent() { return texelFetch(depth, ivec2(0), 0).r > 0.25; }\nfloat lbDisparity(vec2 pc) { return clamp(2.0 * textureLod(depth, pc * uTexel, 0.0).r - 1.0, 0.0, 1.0); }\nvec4 lbMerge(vec4 a, vec4 b, vec4 c, vec4 d, bool fg) {\n  float lo = min(min(a.a, b.a), min(c.a, d.a));\n  float hi = max(max(a.a, b.a), max(c.a, d.a));\n  vec4 w = exp2(-abs(vec4(a.a, b.a, c.a, d.a) - (fg ? hi : lo)) * 40.0);\n  return (w.x * a + w.y * b + w.z * c + w.w * d) / (w.x + w.y + w.z + w.w);\n}\n", ht = `
+}, pt = 4096, Z = "precision highp int;\nivec2 lbFrame() { return ivec2(floor(1.0 / uTexel + 0.5)); }\nint lbHalf() { return lbFrame().y / 2; }\nivec2 lbSize(int l) {\n  ivec2 fr = ivec2(lbFrame().x, 2 * lbHalf());\n  int s = 1 << l;\n  return max((fr + s - 1) / s, ivec2(1));\n}\nivec2 lbOrigin(int l) {\n  if (l <= 1) return ivec2(0);\n  ivec2 o = ivec2(lbSize(1).x, 0);\n  for (int k = 2; k <= 8; k++) {\n    if (k >= l) break;\n    o.y += lbSize(k).y;\n  }\n  return o;\n}\nbool lbFits(int l) {\n  ivec2 e = lbOrigin(l) + lbSize(l);\n  return e.x <= lbFrame().x && e.y <= lbHalf();\n}\nbool lbPresent() { return texelFetch(depth, ivec2(0), 0).r > 0.25; }\nfloat lbDisparity(vec2 pc) { return clamp(2.0 * textureLod(depth, pc * uTexel, 0.0).r - 1.0, 0.0, 1.0); }\nvec4 lbMerge(vec4 a, vec4 b, vec4 c, vec4 d, bool fg) {\n  float lo = min(min(a.a, b.a), min(c.a, d.a));\n  float hi = max(max(a.a, b.a), max(c.a, d.a));\n  vec4 w = exp2(-abs(vec4(a.a, b.a, c.a, d.a) - (fg ? hi : lo)) * 40.0);\n  return (w.x * a + w.y * b + w.z * c + w.w * d) / (w.x + w.y + w.z + w.w);\n}\n", mt = `
 float lbBoostGain(vec2 centre, float boostV) {
   if (boostV <= 0.0) return 1.0;
   vec2 fr = vec2(lbFrame());
@@ -1139,7 +1128,7 @@ float lbBoostGain(vec2 centre, float boostV) {
   float t = smoothstep(${X(n)}, ${X(1)}, max(m.r, max(m.g, m.b)));
   return 1.0 + ${X(7)} * boostV / 100.0 * t;
 }
-`, gt = `
+`, ht = `
 float lbGainOf(float boostedMax, float boostV) {
   float c = ${X(7)} * boostV / 100.0;
   if (c <= 0.0 || boostedMax <= ${X(n)}) return 1.0;
@@ -1249,7 +1238,7 @@ void lbFrontTap(vec4 t, vec2 off, vec2 at, float area, float nearD, float farD, 
   sum += w * t.rgb;
   cover += w;
 }
-`, _t = "\nivec2 q = ivec2(gl_FragCoord.xy);\nint hh = lbHalf();\nbool fg = q.y >= hh;\nivec2 a = ivec2(q.x, fg ? q.y - hh : q.y);\nivec2 s1 = lbSize(1);\nc = vec4(0.0);\nif (q.y < 2 * hh && a.x < s1.x && a.y < s1.y) {\n  ivec2 fr = lbFrame() - 1;\n  ivec2 p0 = min(2 * a, fr);\n  ivec2 p1 = min(2 * a + ivec2(1, 0), fr);\n  ivec2 p2 = min(2 * a + ivec2(0, 1), fr);\n  ivec2 p3 = min(2 * a + ivec2(1, 1), fr);\n  float g = lbBoostGain(vec2(2 * a) + 1.0, boost);\n  c = lbMerge(\n    vec4(g * fetchInput(p0), lbDisparity(vec2(p0) + 0.5)),\n    vec4(g * fetchInput(p1), lbDisparity(vec2(p1) + 0.5)),\n    vec4(g * fetchInput(p2), lbDisparity(vec2(p2) + 0.5)),\n    vec4(g * fetchInput(p3), lbDisparity(vec2(p3) + 0.5)),\n    fg);\n}\n", vt = "\nivec2 q = ivec2(gl_FragCoord.xy);\nint hh = lbHalf();\nint l = uPassIndex + 2;\nbool fg = q.y >= hh;\nivec2 a = ivec2(q.x, fg ? q.y - hh : q.y);\nivec2 o = lbOrigin(l);\nif (q.y < 2 * hh && lbFits(l) && all(greaterThanEqual(a, o)) && all(lessThan(a, o + lbSize(l)))) {\n  ivec2 k = 2 * (a - o);\n  ivec2 po = lbOrigin(l - 1) + ivec2(0, fg ? hh : 0);\n  ivec2 last = lbSize(l - 1) - 1;\n  c = lbMerge(\n    fetchPrev4(po + min(k, last)),\n    fetchPrev4(po + min(k + ivec2(1, 0), last)),\n    fetchPrev4(po + min(k + ivec2(0, 1), last)),\n    fetchPrev4(po + min(k + ivec2(1, 1), last)),\n    fg);\n}\n", yt = `
+`, gt = "\nivec2 q = ivec2(gl_FragCoord.xy);\nint hh = lbHalf();\nbool fg = q.y >= hh;\nivec2 a = ivec2(q.x, fg ? q.y - hh : q.y);\nivec2 s1 = lbSize(1);\nc = vec4(0.0);\nif (q.y < 2 * hh && a.x < s1.x && a.y < s1.y) {\n  ivec2 fr = lbFrame() - 1;\n  ivec2 p0 = min(2 * a, fr);\n  ivec2 p1 = min(2 * a + ivec2(1, 0), fr);\n  ivec2 p2 = min(2 * a + ivec2(0, 1), fr);\n  ivec2 p3 = min(2 * a + ivec2(1, 1), fr);\n  float g = lbBoostGain(vec2(2 * a) + 1.0, boost);\n  c = lbMerge(\n    vec4(g * fetchInput(p0), lbDisparity(vec2(p0) + 0.5)),\n    vec4(g * fetchInput(p1), lbDisparity(vec2(p1) + 0.5)),\n    vec4(g * fetchInput(p2), lbDisparity(vec2(p2) + 0.5)),\n    vec4(g * fetchInput(p3), lbDisparity(vec2(p3) + 0.5)),\n    fg);\n}\n", _t = "\nivec2 q = ivec2(gl_FragCoord.xy);\nint hh = lbHalf();\nint l = uPassIndex + 2;\nbool fg = q.y >= hh;\nivec2 a = ivec2(q.x, fg ? q.y - hh : q.y);\nivec2 o = lbOrigin(l);\nif (q.y < 2 * hh && lbFits(l) && all(greaterThanEqual(a, o)) && all(lessThan(a, o + lbSize(l)))) {\n  ivec2 k = 2 * (a - o);\n  ivec2 po = lbOrigin(l - 1) + ivec2(0, fg ? hh : 0);\n  ivec2 last = lbSize(l - 1) - 1;\n  c = lbMerge(\n    fetchPrev4(po + min(k, last)),\n    fetchPrev4(po + min(k + ivec2(1, 0), last)),\n    fetchPrev4(po + min(k + ivec2(0, 1), last)),\n    fetchPrev4(po + min(k + ivec2(1, 1), last)),\n    fg);\n}\n", vt = `
 ivec2 q = ivec2(gl_FragCoord.xy);
 vec3 sharp = fetchInput(q);
 c = vec4(sharp, 0.0);
@@ -1267,7 +1256,7 @@ if (lbPresent()) {
   // Where blurring begins is a share of the frame, not a pixel count: a
   // circle under a pixel in Develop's preview is over one in a full-size
   // export, and the two must blend (and boost) the same.
-  float toRef = ${X(mt)} / max(fr.x, fr.y);
+  float toRef = ${X(pt)} / max(fr.x, fr.y);
   float rb = abs(cp);
   vec3 back = sharp;
   float wBack = 0.0;
@@ -1332,29 +1321,29 @@ if (lbPresent()) {
   vec3 blurred = take > 1e-5 ? (back * wBack * (1.0 - aFront) + front * aFront) / take : sharp;
   c = vec4(blurred, take);
 }
-`, bt = [
+`, yt = [
 	{
 		name: "base",
-		glsl: _t,
-		helpers: Z + ht
+		glsl: gt,
+		helpers: Z + mt
 	},
 	{
 		name: "levels",
-		glsl: vt,
+		glsl: _t,
 		helpers: Z
 	},
 	{
 		name: "gather",
-		glsl: yt,
-		helpers: Z + gt
+		glsl: vt,
+		helpers: Z + ht
 	},
 	{
 		name: "smooth",
 		glsl: "\nivec2 q = ivec2(gl_FragCoord.xy);\nif (c.a > 0.0) {\n  ivec2 last = lbFrame() - 1;\n  vec3 sum = vec3(0.0);\n  float cover = 0.0;\n  float wsum = 0.0;\n  for (int j = -1; j <= 1; j++) {\n    for (int i = -1; i <= 1; i++) {\n      vec4 n = fetchPrev4(clamp(q + 2 * ivec2(i, j), ivec2(0), last));\n      float w = (i == 0 && j == 0 ? 4.0 : i == 0 || j == 0 ? 2.0 : 1.0) * exp2(-8.0 * abs(n.a - c.a));\n      sum += w * n.a * n.rgb;\n      cover += w * n.a;\n      wsum += w;\n    }\n  }\n  c = vec4(sum / max(cover, 1e-6), cover / wsum);\n}\n",
 		helpers: Z
 	}
-], xt = "\nvec3 lbDepthColour(float d, float nearD, float farD) {\n  vec3 tint = mix(vec3(0.02, 0.1, 0.55), vec3(0.9, 0.35, 0.06), d);\n  return d >= farD && d <= nearD ? mix(tint, vec3(1.0), 0.55) : tint;\n}\n";
-function St(e) {
+], bt = "\nvec3 lbDepthColour(float d, float nearD, float farD) {\n  vec3 tint = mix(vec3(0.02, 0.1, 0.55), vec3(0.9, 0.35, 0.06), d);\n  return d >= farD && d <= nearD ? mix(tint, vec3(1.0), 0.55) : tint;\n}\n";
+function xt(e) {
 	return `
 float lbRaw = texture(depth, srcUv).r;
 bool lbOk = texelFetch(depth, ivec2(0), 0).r > 0.25 && lbRaw > 0.25;
@@ -1368,12 +1357,12 @@ if (view > 0.5 && lbOk) {
 }
 //#endregion
 //#region src/stage.ts
-function Ct(e) {
+function St(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) t = (t << 5) - t + e.charCodeAt(n) | 0;
 	return `u_${(t >>> 0).toString(36).slice(0, 4)}_stageResult`;
 }
-var wt = {
+var Ct = {
 	amount: {
 		key: "amount",
 		glslType: "float",
@@ -1424,11 +1413,11 @@ var wt = {
 		glslType: "float",
 		default: 0
 	}
-}, Tt = (...e) => e.map((e) => wt[e]);
-function Et() {
-	let [e, t, n, r] = bt;
+}, wt = (...e) => e.map((e) => Ct[e]);
+function Tt() {
+	let [e, t, n, r] = yt;
 	return {
-		id: x,
+		id: b,
 		name: "Lens Blur",
 		phase: "scene-linear",
 		priority: 30,
@@ -1437,11 +1426,11 @@ function Et() {
 			encoding: "linear",
 			primaries: "rec709"
 		},
-		glsl: St(Ct(x)),
-		helpers: xt,
-		uniforms: Object.values(wt),
+		glsl: xt(St(b)),
+		helpers: bt,
+		uniforms: Object.values(Ct),
 		textures: [{
-			key: S,
+			key: x,
 			kind: "dynamic",
 			perPhoto: !0
 		}],
@@ -1454,7 +1443,7 @@ function Et() {
 					key: "amount",
 					max: 1
 				},
-				uniforms: Tt("boost")
+				uniforms: wt("boost")
 			},
 			{
 				channels: 4,
@@ -1474,7 +1463,7 @@ function Et() {
 					key: "amount",
 					max: 1
 				},
-				uniforms: Tt("amount", "near", "far", "shape", "boost")
+				uniforms: wt("amount", "near", "far", "shape", "boost")
 			},
 			{
 				channels: 4,
@@ -1495,8 +1484,8 @@ function Et() {
 }
 //#endregion
 //#region src/index.tsx
-var Dt = `${b}.panel`, Q = null, $ = [];
-function Ot(e) {
+var Et = `${y}.panel`, Q = null, $ = [];
+function Dt(e) {
 	let t = new OffscreenCanvas(e.width, e.height), n = t.getContext("2d");
 	return n ? (n.drawImage(e, 0, 0), e.close(), {
 		data: n.getImageData(0, 0, t.width, t.height).data,
@@ -1504,7 +1493,7 @@ function Ot(e) {
 		height: t.height
 	}) : null;
 }
-function kt(e) {
+function Ot(e) {
 	let t = () => e.stores.useDevelopStore.getState();
 	return {
 		photo: (t) => e.stores.useCatalogStore.getState().photos.find((e) => e.id === t),
@@ -1515,7 +1504,7 @@ function kt(e) {
 		sourcePixels: () => e.develop.sourcePixels(),
 		renderPixels: async (t) => {
 			let n = await e.develop.renderPhotoFrame(t, e.develop.normalizeParams({}));
-			return n ? Ot(n) : null;
+			return n ? Dt(n) : null;
 		},
 		savedBag: async (t) => {
 			let n = await e.catalog.getEditState(t);
@@ -1523,25 +1512,26 @@ function kt(e) {
 		},
 		photoData: (t, n) => e.develop.getPhotoData(t, n),
 		putOpenPhotoData: (t, n) => e.develop.putPhotoData(t, n),
-		setTexture: (t, n) => e.setStageTexture(x, S, n, t),
+		setTexture: (t, n) => e.setStageTexture(b, x, n, t),
 		network: e.network
 	};
 }
-function At() {
+function kt() {
 	let e = M.stores.useDevelopStore.getState();
 	e.setDynParams(Object.fromEntries(Object.values(w).map((e) => [e, void 0]))), e.commitEdit("Lens Blur reset");
 }
-function jt(e) {
-	re(e), Q?.dispose(), Q = new Xe(kt(e), $e()), oe(Q, rt), e.registerProcessingStage(Et()), e.setStageTextureProvider(x, S, Q.provide), e.registerPanel({
-		id: Dt,
+function At(e) {
+	re(e), Q?.dispose(), Q = new Ze(Ot(e), et()), se(Q, tt), e.registerProcessingStage(Tt()), e.setStageTextureProvider(b, x, Q.provide), e.registerPanel({
+		id: Et,
 		title: "Lens Blur",
-		component: pt,
+		component: ft,
 		defaultDock: {
 			module: "develop",
 			direction: "right",
 			width: 280
 		},
-		onReset: At
+		modules: ["develop"],
+		onReset: kt
 	}), ue().catch(() => void 0);
 	for (let e of $) e();
 	let t = Q, n = () => void t.syncOpen(), r = (e, t) => e.photoId !== t.photoId || e.paramBag[w.method] !== t.paramBag[w.method] || e.paramBag[w.refine] !== t.paramBag[w.refine];
@@ -1550,17 +1540,17 @@ function jt(e) {
 		e.develop.onSourcePixels(n),
 		e.events.onBroadcast((t) => {
 			let n = t.type === "edit-update" ? t.payload.photoId : null;
-			n && n !== e.stores.useDevelopStore.getState().photoId && e.dropStageTextureVariants(x, S, n);
+			n && n !== e.stores.useDevelopStore.getState().photoId && e.dropStageTextureVariants(b, x, n);
 		}),
-		t.onError((e) => P().setState({ error: e })),
-		t.onChange(() => P().setState({ error: null }))
+		t.onError((e) => N().setState({ error: e })),
+		t.onChange(() => N().setState({ error: null }))
 	], n();
 }
-function Mt() {
+function jt() {
 	for (let e of $) e();
-	$ = [], de("none"), fe(!1), Q?.dispose(), Q = null, se(), ae();
+	$ = [], pe("none"), me(!1), Q?.dispose(), Q = null, ce(), oe();
 }
 //#endregion
-export { Dt as PANEL_ID, jt as activate, Mt as deactivate, kt as hostFor };
+export { Et as PANEL_ID, At as activate, jt as deactivate, Ot as hostFor };
 
 //# sourceMappingURL=index.js.map

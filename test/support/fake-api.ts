@@ -24,6 +24,33 @@ type Provide = (variant: string, signal: AbortSignal) => Promise<StageTextureDat
 
 export const PHOTO_ID = "0b9c4e1e-1111-4222-8333-944455556666";
 
+/** The official brush's defaults as the fake hands them out. */
+export const BRUSH_DEFAULTS = Object.freeze({ size: 0.08, feather: 0.5, opacity: 1, flow: 1 });
+
+type BrushSetting = keyof typeof BRUSH_DEFAULTS;
+
+// A stand-in for core's step table: one step up per setting, enough to show
+// the extension hands its settings to core and applies what comes back.
+const BRUSH_STEPS: Record<string, { key: BrushSetting; by: number }> = {
+  "brush.larger": { key: "size", by: 0.01 },
+  "brush.featherUp": { key: "feather", by: 0.05 },
+  "brush.opacityUp": { key: "opacity", by: 0.1 },
+  "brush.flowUp": { key: "flow", by: 0.1 },
+};
+
+function stepBrush(action: string, brush: Partial<Record<BrushSetting, number>>) {
+  const s = BRUSH_STEPS[action];
+  const now = s ? brush[s.key] : undefined;
+  return s && now !== undefined ? { key: s.key, value: now + s.by } : null;
+}
+
+export interface BrushCursorSeen {
+  at: { x: number; y: number } | "centre" | null;
+  size: number;
+  feather: number;
+  erase?: boolean;
+}
+
 export interface Rig {
   api: SafelightAPI;
   panels: PanelContribution[];
@@ -43,6 +70,8 @@ export interface Rig {
   tool(): CanvasTool | null;
   viewValues(): Record<string, unknown> | null;
   sliders(root: ParentNode): SliderProps[];
+  /** What the official brush ring was last drawn with, if it was. */
+  brushCursor(): BrushCursorSeen | null;
 }
 
 type Props = Record<string, unknown> & { children?: React.ReactNode };
@@ -75,6 +104,26 @@ export function fakeApi(initial: Record<string, unknown> = {}): Rig {
   const catalog = create(() => ({ photos: [{ id: PHOTO_ID, relPath: "a/IMG_1.CR2", fileSize: 1000, rotation: 0 }] }));
   const canvas = create<{ held: CanvasTool | null; view: Record<string, unknown> | null }>()(() => ({ held: null, view: null }));
   const sliderProps = new Map<number, SliderProps>();
+  let cursorSeen: BrushCursorSeen | null = null;
+
+  function BrushCursor(props: BrushCursorSeen) {
+    cursorSeen = props.at === null ? null : { ...props };
+    return null;
+  }
+
+  // A 400 × 300 photo shown at 1:1 from the overlay's top left.
+  const overlay = {
+    rect: { x: 0, y: 0, w: 400, h: 300 },
+    imageRect: { x: 0, y: 0, w: 400, h: 300 },
+    nonce: 1,
+    toScreen: (u: number, v: number) => ({ x: u * 400, y: v * 300 }),
+    toImage: (x: number, y: number) => ({ x: x / 400, y: y / 300 }),
+    radiusToScreen: (r: number) => r * 300,
+    radiusToImage: (px: number) => px / 300,
+    region: { x: 0, y: 0, width: 1, height: 1 },
+    imageAspect: 4 / 3,
+    zoomScale: 1,
+  };
   let nextSlider = 0;
 
   function useParamScope(): ParamScope {
@@ -103,6 +152,7 @@ export function fakeApi(initial: Record<string, unknown> = {}): Rig {
     version: 1,
     extensionId: "lens-blur",
     react: React,
+    assetUrl: (path: string) => `app://bundle/__plugins__/lens-blur/${path}?v=1.0.1`,
     registerPanel: (c: PanelContribution) => void panels.push(c),
     registerProcessingStage: (c: ProcessingStageContribution) => {
       stages.push(c);
@@ -161,6 +211,14 @@ export function fakeApi(initial: Record<string, unknown> = {}): Rig {
       onSourcePixels: () => () => undefined,
       getPhotoData: async () => null,
       putPhotoData: () => undefined,
+      useDevelopOverlay: () => overlay,
+      brush: { defaults: BRUSH_DEFAULTS, actions: Object.keys(BRUSH_STEPS), step: stepBrush },
+      BrushCursor,
+      framePoint: (el: Element, clientX: number, clientY: number) => {
+        const r = el.getBoundingClientRect();
+        const zoom = r.width > 0 && el instanceof HTMLElement && el.offsetWidth > 0 ? r.width / el.offsetWidth : 1;
+        return { x: (clientX - r.left) / zoom, y: (clientY - r.top) / zoom };
+      },
     },
     stores: { useDevelopStore: develop, useCatalogStore: catalog, create },
     catalog: { getEditState: async () => null },
@@ -183,6 +241,7 @@ export function fakeApi(initial: Record<string, unknown> = {}): Rig {
     },
     tool: () => canvas.getState().held,
     viewValues: () => canvas.getState().view,
+    brushCursor: () => cursorSeen,
     sliders: (root) =>
       [...root.querySelectorAll("[data-slider]")].map((e) => {
         const props = sliderProps.get(Number(e.getAttribute("data-slider")));

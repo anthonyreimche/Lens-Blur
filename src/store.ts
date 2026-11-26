@@ -18,29 +18,33 @@ export interface UiState {
   /** Brush radius, as a share of the photo's height (core's brush dabs). */
   brushSize: number;
   brushFeather: number;
+  /** How far one stroke moves the depth: the brush's opacity. */
   brushAmount: number;
+  /** A size or feather slider is being dragged: the ring shows at the centre. */
+  brushPreview: boolean;
   showDepth: boolean;
   /** Bumped when a depth map arrives, for what draws from it. */
   revision: number;
 }
 
-export const INITIAL_UI: UiState = {
+const initialUi = (): UiState => ({
   busy: null,
   error: null,
   hasModel: null,
   tool: "none",
-  brushSize: 0.05,
-  brushFeather: 0.5,
+  brushSize: api.develop.brush.defaults.size,
+  brushFeather: api.develop.brush.defaults.feather,
   brushAmount: 0.5,
+  brushPreview: false,
   showDepth: false,
   revision: 0,
-};
+});
 
 let made: UseBoundStore<StoreApi<UiState>> | null = null;
 
 /** The store, made on first use with the app's zustand. */
 export function ui(): UseBoundStore<StoreApi<UiState>> {
-  made ??= api.stores.create<UiState>()(() => ({ ...INITIAL_UI }));
+  made ??= api.stores.create<UiState>()(initialUi);
   return made;
 }
 

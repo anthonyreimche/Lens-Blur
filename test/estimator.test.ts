@@ -4,8 +4,10 @@
 // won't start, ended when it won't start or answer in time, and ended after a
 // minute without work.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkerEstimator, type EstimatorTimes } from "../src/depth/estimator";
+import { initRuntime } from "../src/rt";
+import { fakeApi } from "./support/fake-api";
 import type { WorkerReply, WorkerRequest } from "../src/depth/worker-protocol";
 
 type Behaviour = (req: WorkerRequest, worker: FakeWorker) => void;
@@ -41,7 +43,6 @@ function estimator(behaviours: Behaviour[], threads = 4) {
   const loads = vi.fn(async () => new ArrayBuffer(4));
   const est = new WorkerEstimator({
     loadModel: loads,
-    runtime: "app://bundle/ort/",
     threads,
     times: TIMES,
     open: () => {
@@ -54,6 +55,18 @@ function estimator(behaviours: Behaviour[], threads = 4) {
 }
 
 afterEach(() => vi.useRealTimers());
+
+beforeEach(() => initRuntime(fakeApi().api));
+
+describe("the runtime's files", () => {
+  it("are loaded from where Safelight serves the extension's own files", async () => {
+    const { est, workers } = estimator([works]);
+    await est.estimate(PIXELS);
+    const init = workers[0].requests[0];
+    expect(init.kind === "init" && init.ortUrl).toBe("app://bundle/__plugins__/lens-blur/dist/ort/ort.wasm.min.mjs?v=1.0.1");
+    expect(init.kind === "init" && init.wasmBase).toBe("app://bundle/__plugins__/lens-blur/dist/ort/");
+  });
+});
 
 describe("the depth model's worker", () => {
   it("starts on demand, hands the model over and reads the map back", async () => {

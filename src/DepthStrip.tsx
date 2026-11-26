@@ -13,11 +13,10 @@ const GRAB = 0.03;
 
 type Drag = { kind: "near" | "far" | "move"; from: number; start: Band };
 
-/** The pointer across `el`, 0 to 1, in layout px (the Interface scale zooms the page). */
+/** The pointer across `el`, 0 to 1. */
 function across(el: HTMLElement, clientX: number): number {
-  const r = el.getBoundingClientRect();
-  const zoom = el.offsetWidth > 0 && r.width > 0 ? r.width / el.offsetWidth : 1;
-  return Math.min(1, Math.max(0, (clientX - r.left) / zoom / Math.max(1, el.offsetWidth)));
+  const { x } = api.develop.framePoint(el, clientX, 0);
+  return Math.min(1, Math.max(0, x / Math.max(1, el.offsetWidth)));
 }
 
 const round4 = (v: number) => Math.round(v * 1e4) / 1e4;

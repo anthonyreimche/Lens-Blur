@@ -74,6 +74,7 @@ export function activate(host: SafelightAPI): void {
     title: "Lens Blur",
     component: LensBlurPanel,
     defaultDock: { module: "develop", direction: "right", width: 280 },
+    modules: ["develop"],
     onReset: reset,
   });
   void checkModel().catch(() => undefined);

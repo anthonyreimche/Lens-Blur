@@ -63,6 +63,21 @@ export async function estimate(method: DepthMethod): Promise<void> {
   }
 }
 
+// The refine brush's settings by the official brush's names: Strength is how
+// much a stroke lays down, its opacity. It has no flow.
+const BRUSH_KEYS = { size: "brushSize", feather: "brushFeather", opacity: "brushAmount" } as const;
+
+/** Whether the held tool takes the brush shortcut `action`; with `run`, take it. */
+function brushAction(action: string, run: boolean): boolean {
+  const s = ui().getState();
+  if (s.tool !== "nearer" && s.tool !== "further") return false;
+  const step = api.develop.brush.step(action, { size: s.brushSize, feather: s.brushFeather, opacity: s.brushAmount });
+  const key = step && step.key !== "flow" ? BRUSH_KEYS[step.key] : null;
+  if (!step || !key) return false;
+  if (run) ui().setState({ [key]: step.value });
+  return true;
+}
+
 /** Holds the canvas with `tool`, or lets it go. */
 export function setTool(tool: Tool): void {
   ui().setState({ tool });
@@ -70,7 +85,13 @@ export function setTool(tool: Tool): void {
     api.develop.setCanvasTool(null);
     return;
   }
-  api.develop.setCanvasTool({ overlay, zoomable: true, onEscape: () => ui().setState({ tool: "none" }) });
+  api.develop.setCanvasTool({
+    overlay,
+    zoomable: true,
+    onEscape: () => ui().setState({ tool: "none" }),
+    onAction: (action) => brushAction(action, true),
+    wants: (action) => brushAction(action, false),
+  });
 }
 
 export function setShowDepth(on: boolean): void {
